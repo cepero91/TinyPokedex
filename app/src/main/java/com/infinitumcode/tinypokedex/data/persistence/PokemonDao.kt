@@ -11,11 +11,11 @@ import com.infinitumcode.tinypokedex.data.entity.local.PokemonDb
 interface PokemonDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(repos: List<PokemonDb>)
+    suspend fun insertAll(pokemonList: List<PokemonDb>)
 
     @Query("SELECT * FROM Pokemon")
     fun allPokemon(): PagingSource<Int, PokemonDb>
 
     @Query("DELETE FROM Pokemon")
-    suspend fun clearAllHits()
+    suspend fun clearAllPokemon()
 }

@@ -30,6 +30,6 @@ abstract class PokemonDatabase : RoomDatabase() {
             Room.databaseBuilder(
                 context.applicationContext,
                 PokemonDatabase::class.java, DATABASE_NAME
-            ).build()
+            ).fallbackToDestructiveMigration().build()
     }
 }

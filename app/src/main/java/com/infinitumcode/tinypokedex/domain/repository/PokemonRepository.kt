@@ -5,5 +5,5 @@ import com.infinitumcode.tinypokedex.domain.entity.Pokemon
 import kotlinx.coroutines.flow.Flow
 
 interface PokemonRepository {
-    suspend fun fetchPokemonList(page: Int): Flow<PagingData<Pokemon>>
+    fun fetchPokemonList(): Flow<PagingData<Pokemon>>
 }

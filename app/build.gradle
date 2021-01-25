@@ -18,30 +18,46 @@ android {
         targetSdkVersion versions.targetSdk
         versionCode versions.versionCode
         versionName versions.versionName
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "com.infinitumcode.tinypokedex.CustomTestRunner"
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += ["room.schemaLocation" : "$projectDir/schemas".toString()]
+            }
+        }
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments["dagger.hilt.disableModulesHaveInstallInCheck"] = "true"
+            }
+        }
     }
+
     buildFeatures {
         dataBinding true
     }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_1_8.toString()
+    }
+
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+        kotlinOptions.freeCompilerArgs += ["-Xopt-in=kotlin.RequiresOptIn"]
     }
 }
 
 dependencies {
     // Kotlin
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$versions.kotlin"
     implementation "androidx.core:core-ktx:1.3.2"
 
     // Support
@@ -50,6 +66,10 @@ dependencies {
     implementation "androidx.constraintlayout:constraintlayout:$versions.constraintVersion"
     implementation "androidx.fragment:fragment-ktx:$versions.fragmentVersion"
     implementation "androidx.drawerlayout:drawerlayout:$versions.drawerLayoutVersion"
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:$versions.swipeVersion"
+
+    // Databinding-ktx
+    implementation "com.github.wada811:DataBinding-ktx:$versions.databindingKtxVersion"
 
     // Navigation Component
     implementation "androidx.navigation:navigation-fragment-ktx:$versions.navigationVersion"
@@ -68,7 +88,7 @@ dependencies {
     implementation "androidx.room:room-runtime:$versions.roomVersion"
     kapt "androidx.room:room-compiler:$versions.roomVersion"
     implementation "androidx.room:room-ktx:$versions.roomVersion"
-    testImplementation "androidx.room:room-testing:$versions.roomVersion"
+    kaptAndroidTest "androidx.room:room-testing:$versions.roomVersion"
 
     // Paging
     implementation "androidx.paging:paging-runtime-ktx:$versions.paging3Version"
@@ -76,20 +96,22 @@ dependencies {
     // Di
     implementation "com.google.dagger:hilt-android:$versions.hiltCoreVersion"
     kapt "com.google.dagger:hilt-android-compiler:$versions.hiltCoreVersion"
+    androidTestImplementation "com.google.dagger:hilt-android-testing:$versions.hiltCoreVersion"
+    kaptAndroidTest "com.google.dagger:hilt-android-compiler:$versions.hiltCoreVersion"
 
     // Network
     implementation "com.squareup.retrofit2:retrofit:$versions.retrofitVersion"
-    implementation "com.github.skydoves:sandwich:$versions.sandwichVersion"
-    implementation "com.squareup.moshi:moshi-kotlin:$versions.moshiVersion"
-    kapt "com.squareup.moshi:moshi-kotlin-codegen:$versions.moshiVersion"
+    implementation "com.squareup.retrofit2:converter-gson:$versions.retrofitVersion"
 
     // Image
     implementation "io.coil-kt:coil:$versions.coilVersion"
 
+    // Test
+    testImplementation "junit:junit:$versions.junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$versions.androidxTestJunit"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$versions.espressoVersion"
+    androidTestImplementation "com.google.truth:truth:$versions.truthVersion"
 
-    implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.2.0"
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.2.0"
-    testImplementation "junit:junit:4.+"
-    androidTestImplementation "androidx.test.ext:junit:1.1.2"
-    androidTestImplementation "androidx.test.espresso:espresso-core:3.3.0"
+    def fragment_version = "1.2.5"
+    debugImplementation "androidx.fragment:fragment-testing:$fragment_version"
 }

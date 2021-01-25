@@ -7,13 +7,11 @@ import com.infinitumcode.tinypokedex.data.entity.local.PokemonDb
 import com.infinitumcode.tinypokedex.data.entity.local.RemoteKeyDb
 import com.infinitumcode.tinypokedex.data.entity.remote.PokemonResponseDto
 import com.infinitumcode.tinypokedex.data.mapper.PokemonDbToDomain
+import com.infinitumcode.tinypokedex.data.mapper.PokemonDtoToDb
 import com.infinitumcode.tinypokedex.data.wrapper.Result
 import com.infinitumcode.tinypokedex.domain.entity.Pokemon
 import com.infinitumcode.tinypokedex.domain.repository.PokemonRepository
 import com.infinitumcode.tinypokedex.utils.Constants.PAGE_SIZE
-import com.skydoves.sandwich.onError
-import com.skydoves.sandwich.onException
-import com.skydoves.sandwich.suspendOnSuccess
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -22,7 +20,8 @@ import javax.inject.Inject
 class PokemonRemoteMediator @Inject constructor(
     private val localDataSource: LocalDataSource,
     private val remoteDataSource: RemoteDataSource,
-    private val pokemonDbToDomain: PokemonDbToDomain
+    private val pokemonDbToDomain: PokemonDbToDomain,
+    private val pokemonDtoToDb: PokemonDtoToDb
 ) : RemoteMediator<Int, PokemonDb>(), PokemonRepository {
 
     override suspend fun load(
@@ -43,10 +42,9 @@ class PokemonRemoteMediator @Inject constructor(
             LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
         }
         return try {
-            val currentPage = page ?: 1
-            when (val pokemonResponse = remoteDataSource.fetchPokemonList(currentPage)) {
+            when (val pokemonResponse = remoteDataSource.fetchPokemonList(page ?: 1)) {
                 is Result.Success -> {
-                    cachePokemonResponse(loadType, pokemonResponse.data)
+                    cachePokemonResponse(loadType, pokemonResponse.data, page ?: 1)
                     MediatorResult.Success(endOfPaginationReached = pokemonResponse.data.results.isEmpty())
                 }
                 else -> MediatorResult.Error(Exception((pokemonResponse as Result.Error).errorMessage))
@@ -56,8 +54,26 @@ class PokemonRemoteMediator @Inject constructor(
         }
     }
 
-    private fun cachePokemonResponse(loadType: LoadType, data: PokemonResponseDto) {
-
+    private suspend fun cachePokemonResponse(
+        loadType: LoadType,
+        data: PokemonResponseDto,
+        currentPage: Int
+    ) {
+        localDataSource.onDatabaseTransaction {
+            if (loadType == LoadType.REFRESH) {
+                localDataSource.removeAllPokemon()
+                localDataSource.removeAllKeys()
+            }
+            val nextKey = if (data.results.isEmpty()) null else currentPage + 1
+            val remoteKeyListDb = mutableListOf<RemoteKeyDb>()
+            val pokemonListDb = mutableListOf<PokemonDb>()
+            data.results.forEach { pokemonDto ->
+                remoteKeyListDb.add(RemoteKeyDb(pokemonDto.name, nextKey))
+                pokemonListDb.add(pokemonDtoToDb.map(pokemonDto))
+            }
+            localDataSource.insertAllKey(remoteKeyListDb)
+            localDataSource.insertAllPokemon(pokemonListDb)
+        }
     }
 
     private suspend fun getRemoteKeyForLastItem(state: PagingState<Int, PokemonDb>): RemoteKeyDb? {
@@ -67,7 +83,7 @@ class PokemonRemoteMediator @Inject constructor(
             }
     }
 
-    override suspend fun fetchPokemonList(page: Int): Flow<PagingData<Pokemon>> {
+    override fun fetchPokemonList(): Flow<PagingData<Pokemon>> {
         val pagingSourceFactory = { localDataSource.allPokemon() }
 
         return Pager(
